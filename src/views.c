@@ -85,7 +85,7 @@ inline int create_diff(struct xxxid_stats_arr *cs,struct xxxid_stats_arr *ps,dou
 	for (n=0;cs->arr&&n<cs->length;n++) {
 		struct xxxid_stats *c;
 		struct xxxid_stats *p;
-		double rv,wv;
+		double rv,wv,rvt,wvt;
 		char temp[12];
 
 		c=cs->arr[n];
@@ -96,8 +96,12 @@ inline int create_diff(struct xxxid_stats_arr *cs,struct xxxid_stats_arr *ps,dou
 			c->swapin_val=0;
 			c->read_val=0;
 			c->write_val=0;
+			c->readtps_val=0;
+			c->writetps_val=0;
 			c->read_val_acc=0;
 			c->write_val_acc=0;
+			c->readtps_val_acc=0;
+			c->writetps_val_acc=0;
 
 			snprintf(temp,sizeof temp,"%i",c->tid);
 			maxpidlen=maxpidlen<(int)strlen(temp)?(int)strlen(temp):maxpidlen;
@@ -115,12 +119,18 @@ inline int create_diff(struct xxxid_stats_arr *cs,struct xxxid_stats_arr *ps,dou
 
 		rv=(double)rrv(c->read_bytes,p->read_bytes);
 		wv=(double)rrv(c->write_bytes,p->write_bytes);
+		rvt=(double)rrv(c->read_syscalls,p->read_syscalls);
+		wvt=(double)rrv(c->write_syscalls,p->write_syscalls);
 
 		c->read_val=rv/time_s;
 		c->write_val=wv/time_s;
+		c->readtps_val=rvt/time_s;
+		c->writetps_val=wvt/time_s;
 
 		c->read_val_acc=p->read_val_acc+rv;
 		c->write_val_acc=p->write_val_acc+wv;
+		c->readtps_val_acc=p->readtps_val_acc+rvt;
+		c->writetps_val_acc=p->writetps_val_acc+wvt;
 
 		memcpy(c->iohist+1,p->iohist,sizeof c->iohist-sizeof *c->iohist);
 		c->iohist[0]=value2scale(c->blkio_val,100.0);
@@ -146,8 +156,12 @@ inline int create_diff(struct xxxid_stats_arr *cs,struct xxxid_stats_arr *ps,dou
 			ps->arr[n]->swapin_val=0;
 			ps->arr[n]->read_val=0;
 			ps->arr[n]->write_val=0;
+			ps->arr[n]->readtps_val=0;
+			ps->arr[n]->writetps_val=0;
 			ps->arr[n]->read_val_acc=0;
 			ps->arr[n]->write_val_acc=0;
+			ps->arr[n]->readtps_val_acc=0;
+			ps->arr[n]->writetps_val_acc=0;
 			// copy process data to cs
 			p=malloc(sizeof *p);
 			if (p) {
@@ -206,7 +220,7 @@ inline int create_diff(struct xxxid_stats_arr *cs,struct xxxid_stats_arr *ps,dou
 	return cs->length;
 }
 
-inline void humanize_val(double *value,char *str,int allow_accum) {
+inline void humanize_val(double *value,char *str,e_h_type htype) {
 	const char *u="BKMGTPEZY";
 	size_t p=0;
 
@@ -223,7 +237,11 @@ inline void humanize_val(double *value,char *str,int allow_accum) {
 		}
 	}
 
-	snprintf(str,4,"%c%s",u[p],config.f.accumulated&&allow_accum?"  ":"/s");
+	if (htype==H_BYTES_PER_SEC||htype==H_BYTES_ACCUM) // allow accumulated values in certain places only
+		snprintf(str,4,"%c%s",u[p],config.f.accumulated&&htype==H_BYTES_ACCUM?"  ":"/s");
+	else
+		if (htype==H_TRANS_PER_SEC)
+			snprintf(str,4,"%c%s",u[p]=='B'?' ':u[p],config.f.accumulated?"T ":"Ts");
 }
 
 inline int iotop_sort_cb(const void *a,const void *b) {

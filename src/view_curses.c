@@ -519,9 +519,9 @@ static inline void view_curses(struct xxxid_stats_arr *cs,struct xxxid_stats_arr
 	if (!config.f.hideuser)
 		maxcmdline-=column_width[SORT_BY_USER];
 	if (!config.f.hideread)
-		maxcmdline-=column_width[SORT_BY_READ];
+		maxcmdline-=column_width[SORT_BY_READ]*(config.f.hidetps?1:2);
 	if (!config.f.hidewrite)
-		maxcmdline-=column_width[SORT_BY_WRITE];
+		maxcmdline-=column_width[SORT_BY_WRITE]*(config.f.hidetps?1:2);
 	if (!config.f.hideswapin&&has_tda)
 		maxcmdline-=column_width[SORT_BY_SWAPIN];
 	if (!config.f.hideio&&has_tda)
@@ -552,10 +552,10 @@ static inline void view_curses(struct xxxid_stats_arr *cs,struct xxxid_stats_arr
 		hist_a_w[0]=total_a_write;
 	}
 
-	humanize_val(&total_read,str_read,1);
-	humanize_val(&total_write,str_write,1);
-	humanize_val(&total_a_read,str_a_read,0);
-	humanize_val(&total_a_write,str_a_write,0);
+	humanize_val(&total_read,str_read,H_BYTES_ACCUM);
+	humanize_val(&total_write,str_write,H_BYTES_ACCUM);
+	humanize_val(&total_a_read,str_a_read,H_BYTES_PER_SEC);
+	humanize_val(&total_a_write,str_a_write,H_BYTES_PER_SEC);
 
 	gr_width_h=gr_width;
 	if (maxy<10||maxx<(int)strlen(HEADER1_FORMAT)+2*(7-5+3-2+(!config.f.hidegraph?gr_width_h+1:0)-2)) {
@@ -658,6 +658,7 @@ static inline void view_curses(struct xxxid_stats_arr *cs,struct xxxid_stats_arr
 
 	for (i=0;i<SORT_BY_MAX;i++) {
 		int wt,wi=column_width[i];
+		char th[50];
 		char t[50];
 		char *ts;
 
@@ -667,6 +668,8 @@ static inline void view_curses(struct xxxid_stats_arr *cs,struct xxxid_stats_arr
 			wi=gr_width+1;
 		if (i==SORT_BY_COMMAND)
 			wi=maxcmdline;
+		if ((i==SORT_BY_READ||i==SORT_BY_WRITE)&&!config.f.hidetps)
+			wi*=2;
 
 		if (config.opts[&config.f.hidepid-config.opts+i])
 			continue;
@@ -676,12 +679,15 @@ static inline void view_curses(struct xxxid_stats_arr *cs,struct xxxid_stats_arr
 		if ((&config.f.hidepid-config.opts+i==&config.f.hideio-config.opts)&&!has_tda)
 			continue;
 
-		wt=strlen(COLUMN_NAME(i));
+		strcpy(th,COLUMN_NAME(i));
+		if ((i==SORT_BY_READ||i==SORT_BY_WRITE)&&!config.f.hidetps)
+			strcat(th,"+TPS");
+		wt=strlen(th);
 		if (wt>wi-1)
 			wt=wi-1;
 		if (masked_sort_by(0)==i)
 			attron(A_BOLD);
-		snprintf(t,sizeof t,"%-*.*s%s",wt,wt,COLUMN_NAME(i),SORT_CHAR(i));
+		snprintf(t,sizeof t,"%-*.*s%s",wt,wt,th,SORT_CHAR(i));
 		ts=u8strpadt(t,wi);
 		if (ts) {
 			printw("%s",ts);
@@ -804,6 +810,8 @@ static inline void view_curses(struct xxxid_stats_arr *cs,struct xxxid_stats_arr
 	for (i=0;cs->sor&&i<diff_len;i++) {
 		int th_prio_diff,th_first,th_have_filtered,th_first_id,th_last_id;
 		struct xxxid_stats *ms=cs->sor[i],*s;
+		char readtps_str[4],writetps_str[4];
+		double readtps_val,writetps_val;
 		char read_str[4],write_str[4];
 		char graphstr[HISTORY_POS*5];
 		double read_val,write_val;
@@ -871,9 +879,13 @@ static inline void view_curses(struct xxxid_stats_arr *cs,struct xxxid_stats_arr
 
 			read_val=config.f.accumulated?s->read_val_acc:s->read_val;
 			write_val=config.f.accumulated?s->write_val_acc:s->write_val;
+			readtps_val=config.f.accumulated?s->readtps_val_acc:s->readtps_val;
+			writetps_val=config.f.accumulated?s->writetps_val_acc:s->writetps_val;
 
-			humanize_val(&read_val,read_str,1);
-			humanize_val(&write_val,write_str,1);
+			humanize_val(&read_val,read_str,H_BYTES_ACCUM);
+			humanize_val(&write_val,write_str,H_BYTES_ACCUM);
+			humanize_val(&readtps_val,readtps_str,H_TRANS_PER_SEC);
+			humanize_val(&writetps_val,writetps_str,H_TRANS_PER_SEC);
 
 			pwt=esc_low_ascii(s->pw_name);
 			pw_name=u8strpadt(pwt,9);
@@ -978,17 +990,27 @@ static inline void view_curses(struct xxxid_stats_arr *cs,struct xxxid_stats_arr
 				if (s->error_x) {
 					attron(config.f.nocolor?A_ITALIC:COLOR_PAIR(RED_PAIR));
 					printw("   Error    ");
+					if (!config.f.hidetps)
+						printw("   Error    ");
 					attroff(config.f.nocolor?A_ITALIC:COLOR_PAIR(RED_PAIR));
-				} else
+				} else {
 					printw("%7.2f %-3.3s ",read_val,read_str);
+					if (!config.f.hidetps)
+						printw("%7.2f %-3.3s ",readtps_val,readtps_str);
+				}
 			}
 			if (!config.f.hidewrite) {
 				if (s->error_x) {
 					attron(config.f.nocolor?A_ITALIC:COLOR_PAIR(RED_PAIR));
 					printw("   Error    ");
+					if (!config.f.hidetps)
+						printw("   Error    ");
 					attroff(config.f.nocolor?A_ITALIC:COLOR_PAIR(RED_PAIR));
-				} else
+				} else {
 					printw("%7.2f %-3.3s ",write_val,write_str);
+					if (!config.f.hidetps)
+						printw("%7.2f %-3.3s ",writetps_val,writetps_str);
+				}
 			}
 			if (!config.f.hideswapin&&has_tda) {
 				if (s->error_x) {

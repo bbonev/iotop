@@ -40,7 +40,7 @@ inline void init_params(void) {
 	params.user_id=-1;
 }
 
-static const char str_opt[]="boPaktqc123456789xel";
+static const char str_opt[]="boPaktqc123456789xels";
 
 static inline void print_help(void) {
 	printf(
@@ -82,6 +82,7 @@ static inline void print_help(void) {
 		"  -x, --dead-x           show exited processes/threads with letter x\n"
 		"  -e, --hide-exited      hide exited processes\n"
 		"  -l, --no-color         do not colorize values\n",
+		"  -s, --hide-tps         do not show syscall r/w counts\n",
 		progname
 	);
 }
@@ -128,10 +129,11 @@ static inline void parse_args(int argc,char *argv[]) {
 			{"hide-exited",no_argument,NULL,'e'},
 			{"no-color",no_argument,NULL,'l'},
 			{"grtype",required_argument,NULL,'g'},
+			{"hide-tps",no_argument,NULL,'s'},
 			{NULL,0,NULL,0}
 		};
 
-		int c=getopt_long(argc,argv,"vhbon:d:p:u:Paktqc123456789xelg:H:",long_options,NULL);
+		int c=getopt_long(argc,argv,"vhbon:d:p:u:Paktqc123456789xelsg:H:",long_options,NULL);
 
 		if (c==-1) {
 			if (optind<argc) {
@@ -175,6 +177,7 @@ static inline void parse_args(int argc,char *argv[]) {
 			case 'x':
 			case 'e':
 			case 'l':
+			case 's':
 				config.opts[(unsigned int)(strchr(str_opt,c)-str_opt)]=1;
 				break;
 			case 'n':

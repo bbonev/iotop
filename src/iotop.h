@@ -61,12 +61,13 @@ typedef union {
 		int deadx;
 		int hideexited;
 		int nocolor;
+		int hidetps;
 		e_grtype grtype;
 		int helptype;
 		int sort_by;
 		int sort_order;
 	} f;
-	int opts[22];
+	int opts[23];
 } config_t;
 
 typedef struct {
@@ -105,8 +106,12 @@ struct xxxid_stats {
 	double swapin_val;
 	double read_val;
 	double write_val;
+	double readtps_val;
+	double writetps_val;
 	double read_val_acc;
 	double write_val_acc;
+	double readtps_val_acc;
+	double writetps_val_acc;
 
 	int io_prio;
 
@@ -250,9 +255,15 @@ inline void arr_sort(struct xxxid_stats_arr *pa,int (*cb)(const void *a,const vo
 #define HEADER1_FORMAT "  Total DISK READ: %7.2f %s%s |   Total DISK WRITE: %7.2f %s%s"
 #define HEADER2_FORMAT "Current DISK READ: %7.2f %s%s | Current DISK WRITE: %7.2f %s%s"
 
+typedef enum {
+	H_BYTES_PER_SEC=0,
+	H_BYTES_ACCUM=1,
+	H_TRANS_PER_SEC,
+} e_h_type;
+
 inline void calc_total(struct xxxid_stats_arr *cs,double *read,double *write);
 inline void calc_a_total(struct act_stats *act,double *read,double *write,double time_s);
-inline void humanize_val(double *value,char *str,int allow_accum);
+inline void humanize_val(double *value,char *str,e_h_type htype);
 inline int iotop_sort_cb(const void *a,const void *b);
 inline int create_diff(struct xxxid_stats_arr *cs,struct xxxid_stats_arr *ps,double time_s,filter_callback_w cb,int width,int *cnt);
 inline int value2scale(double val,double mx);

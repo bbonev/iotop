@@ -32,10 +32,10 @@ static inline void view_batch(struct xxxid_stats_arr *cs,struct xxxid_stats_arr 
 	calc_total(cs,&total_read,&total_write);
 	calc_a_total(act,&total_a_read,&total_a_write,time_s);
 
-	humanize_val(&total_read,str_read,1);
-	humanize_val(&total_write,str_write,1);
-	humanize_val(&total_a_read,str_a_read,0);
-	humanize_val(&total_a_write,str_a_write,0);
+	humanize_val(&total_read,str_read,H_BYTES_ACCUM);
+	humanize_val(&total_write,str_write,H_BYTES_ACCUM);
+	humanize_val(&total_a_read,str_a_read,H_BYTES_PER_SEC);
+	humanize_val(&total_a_write,str_a_write,H_BYTES_PER_SEC);
 
 	printf(HEADER1_FORMAT,total_read,str_read,"",total_write,str_write,"");
 
@@ -69,8 +69,8 @@ static inline void view_batch(struct xxxid_stats_arr *cs,struct xxxid_stats_arr 
 		if (s->exited) // do not show exited processes in batch view
 			continue;
 
-		humanize_val(&read_val,read_str,1);
-		humanize_val(&write_val,write_str,1);
+		humanize_val(&read_val,read_str,H_BYTES_ACCUM);
+		humanize_val(&write_val,write_str,H_BYTES_ACCUM);
 
 		pw_name=u8strpadt(s->pw_name,10);
 
